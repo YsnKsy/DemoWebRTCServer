@@ -7,6 +7,7 @@ const peer = (peerID = null, description = { type: null, sdp: null }) => ({ peer
 const peers = { offer: peer(), answer: peer() };
 const extractUserID = req => req.resource.replace(/\//g, '');
 const isValidSDP = ({ type, sdp }) => (type === 'offer' || type === 'answer') && (sdp && sdp.length);
+const isEmptyPeer = (p, t) => (p[t].description.type === null);
 
 // WebSocket server
 wsServer.on('request', request => {
@@ -18,7 +19,7 @@ wsServer.on('request', request => {
         if (type === 'utf8') {
             const data = JSON.parse(utf8Data);
             if (isValidSDP(data)) {
-                peers[data.type] = peer(userID, data);
+                peers[data.type] = isEmptyPeer(peers, data.type) ? peer(userID, data) : peers[data.type];
                 Object.entries(clients)
                     .filter(c => c[0] !== userID)
                     .map(c => c[1].send(JSON.stringify(peers[data.type].description)));
