@@ -1,15 +1,12 @@
 const WebSocketServer = require('websocket').server;
 const http = require('http');
 const server = http.createServer().listen(1337);
+const wsServer = new WebSocketServer({ httpServer: server });
 
 const clients = {};
-const peer = (peerID = null, description = null) => ({ peerID, description });
+const peer = (peerID = null, description = { type: null, sdp: null }) => ({ peerID, description });
 const peers = { offer: peer(), answer: peer() };
-
 const extractUserID = req => req.resource.replace(/\//g, '');
-
-// create the server
-wsServer = new WebSocketServer({ httpServer: server });
 
 // WebSocket server
 wsServer.on('request', (request) => {
@@ -19,18 +16,14 @@ wsServer.on('request', (request) => {
 
     clients[userID].on('message', (message) => {
         const { type, utf8Data } = message;
-
         if (type === 'utf8') {
             const { type, sdp } = JSON.parse(utf8Data);
-            
-            if (type === 'offer') {
-                console.log(`Offer from ${userID}`, sdp);
-                const test = JSON.stringify({ test: 'voici mon test' });
-                clients[userID].send(JSON.stringify(test))
-            } else if (type === 'answer') {
-                console.log(`Answer from ${userID}`, sdp);
-                const test = JSON.stringify({ test: 'voici mon test' });
-                clients[userID].send(JSON.stringify(test))
+            const validReq = (type === 'offer' || type === 'answer') && (sdp && sdp.length);
+            if (validReq) {
+                peers[type] = peer(userID, { type, sdp });
+                Object.entries(clients)
+                    .filter(c => c[0] !== userID)
+                    .map(c => c[1].send(JSON.stringify(peers[type].description)));
             }
         }
     });
