@@ -9,12 +9,12 @@ const peers = { offer: peer(), answer: peer() };
 const extractUserID = req => req.resource.replace(/\//g, '');
 
 // WebSocket server
-wsServer.on('request', (request) => {
+wsServer.on('request', request => {
     const connection = request.accept(null, request.origin);
     const userID = extractUserID(request);
     clients[userID] = connection;
 
-    clients[userID].on('message', (message) => {
+    clients[userID].on('message', message => {
         const { type, utf8Data } = message;
         if (type === 'utf8') {
             const { type, sdp } = JSON.parse(utf8Data);
@@ -28,17 +28,10 @@ wsServer.on('request', (request) => {
         }
     });
 
-    clients[userID].on('close', (connection) => {
-        console.log('request > onClose > connection', connection);
-        delete clients[userID];
-        // close user connection
-    });
+    clients[userID].on('close', () => delete clients[userID]);
 
     clients[userID].on('exchange', (data) => {
         console.log('exchange', data);
-        // data.from = connection.id;
-        // let to = wsServer.sockets.connected[data.to];
-        // to.emit('exchange', data);
     });
 });
 
