@@ -29,6 +29,7 @@ const isValidCandidate = (type, { candidate, sdpMLineIndex, sdpMid }) => (type =
 wsServer.on('request', request => {
     const connection = request.accept(null, request.origin);
     const userID = extractUserID(request);
+    console.log('New User', userID);
     clients[userID] = connection;
     clients[userID].on('message', message => {
         const { type, utf8Data } = message;
