@@ -11,10 +11,11 @@ const extractUserID = req => req.resource.replace(/\//g, '');
 const isEmptyPeer = (p, t) => (p[t].type === null);
 const isValidSDP = ({ type, sdp }) => (type === 'offer' || type === 'answer') && (sdp && sdp.length);
 const isValidCandidate = (type, { candidate, sdpMLineIndex, sdpMid }) => (type === 'candidate') && (typeof candidate === 'string' && typeof sdpMLineIndex === 'number' && typeof sdpMid === 'string');
+const isWrtcClose = (type, payload) => (type === 'close' && payload === 'wrtc');
 
 // Temp
-const isDebug = ({ type }) => (type === 'debug');
-const who = (id) => id === 'E306F95A-9F9D-4CD7-9CAA-B968CE535FE0' ? 'Yaska' : 'Kamal';
+const isDebug = type => (type === 'debug');
+const who = (id) => id === 'E306F95A-9F9D-4CD7-9CAA-B968CE535FE0' ? 'Yaska' : 'Guest';
 
 /*
 {
@@ -37,18 +38,25 @@ wsServer.on('request', request => {
 
     clients[userID] = connection;
     clients[userID].on('message', message => {
-        const { type, utf8Data } = message;
-        if (type === 'utf8') {
+        const { type: encoding, utf8Data } = message;
+        if (encoding === 'utf8') {
             const { type, payload } = JSON.parse(utf8Data);
             let result = null;
 
-            if (isDebug({ type })) console.log(`DEBUG > ${who(userID)} :`, payload) // temp
+            if (isDebug(type)) console.log(`DEBUG > ${who(userID)} :`, payload) // temp
             
             if (isValidSDP(payload)) {
                 peers[type] = isEmptyPeer(peers, type) ? peer(payload) : peers[type];
                 result = { type, payload: peers[type] };
-            } else if (isValidCandidate(type, payload)) {
+            } 
+            
+            if (isValidCandidate(type, payload)) {
                 result = { type, payload };
+            }
+
+            if (isWrtcClose(type, payload)) {
+                peers['offer'] = peer();
+                peers['answer'] = peer();
             }
 
             if (result !== null) Object.entries(clients).filter(c => c[0] !== userID).map(c => c[1].send(JSON.stringify(result)));
